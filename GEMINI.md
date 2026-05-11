@@ -1,0 +1,4 @@
+Always include readme.md file once the task is completed at a initial stage after that if task is executed and completed then frequently update the readme.md file as well.
+Create unit test cases for the project implemented in the workspace. if it is not present in the workspace then create it and if it is present in the workspace then update it.
+Always store credentials in .env file and make sure to add .env file in .gitignore file.
+Update the WORKFLOW.md file once the task is completed at a initial stage after that if task is executed and completed then frequently update the WORKFLOW.md file as well.
