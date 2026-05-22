@@ -65,8 +65,11 @@ Distributes a target value across leaf nodes based on a rule-driven strategy.
 
 1. **OpenLClient**: Communicates with the rule engine to fetch allocation strategies based on the `target_measure`. **Fails explicitly if `target_measure` is missing or `OPENL_URL` is not set.**
 2. **HierarchyResolver**: Queries Apache Druid via a dynamic SQL `WHERE` clause to resolve high-level dimensions into leaf nodes, returning a list of `_id` strings.
-3. **MathEngine**: Performs vectorized, in-memory computations. Maps strictly via `_id` with support for overrides and constraints (`MIN_ZERO`, `ROUND_OFF`).
-4. **Executor**: Handles parallel processing and bulk DB writes using Node.js Worker Threads.
+3. **MathEngine & Plugin Architecture**: Performs vectorized, in-memory computations. 
+   - **Strategy Pattern**: The math engine is decoupled from allocation logic using a strict Strategy Pattern.
+   - **Core Strategies**: Built-in support for `EQUAL`, `WEIGHTED`, and `COPY`.
+   - **Custom Plugins**: Developers can inject their own custom logic by adding strategy files to `src/plugins/strategies/` and registering them in `src/plugins/register.ts`.
+4. **Executor**: Handles parallel processing and bulk DB writes using Node.js Worker Threads safely avoiding memory leaks and segmentation faults.
 
 ### 🔒 Versioning & Consistency
 

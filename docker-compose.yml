@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  disagg-engine:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - MONGO_URI=mongodb://mongodb:27017
+      - DB_NAME=disaggregation_db
+      - DRUID_URL=http://druid-router:8888/druid/v2/sql
+      - DRUID_DATASOURCE=fact_departmnt_quarter
+      - OPENL_URL=http://openl-server:9007
+    depends_on:
+      - mongodb
+    networks:
+      - disagg_network
+
+  mongodb:
+    image: mongo:7.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - disagg_network
+
+volumes:
+  mongodb_data:
+
+networks:
+  disagg_network:
+    driver: bridge

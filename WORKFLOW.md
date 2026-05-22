@@ -69,22 +69,25 @@ The engine checks MongoDB for the current state of the resolved leaf nodes.
   2. To fetch the current `version` for **Optimistic Locking**.
 
 ### Step 2.5: Vectorized Computation (In-Memory Processing)
-**Component:** `MathEngine`
-Number crunching is performed using in-memory, array-based operations to ensure high throughput.
+**Component:** `MathEngine` & `Plugins`
+Number crunching is performed using in-memory, array-based operations to ensure high throughput. The mathematical logic is fully decoupled using a **Strategy Pattern Plugin Architecture**.
 - **Action:** 
-  1. Filters out overridden nodes.
-  2. Calculates the allocation based on `spreading_type`:
+  1. Accurately parses boolean strings (`"true"`, `"false"`) from Druid.
+  2. Filters out overridden nodes (`isoverride: true`).
+  3. Delegates execution to the dynamically loaded strategy from `src/plugins/strategies/`:
      - **EQUAL**: Even split across non-overridden nodes.
-     - **WEIGHTED**: Proportional split based on `basis_measure` (defaults to `target_measure`).
+     - **WEIGHTED**: Proportional split based on `basis_measure` (safely handles zero-basis).
      - **COPY**: Broadcasts `targetValue` to all nodes (broadcasting/copying).
-  3. Applies **Constraints**: Clamps values based on rules like `MIN_ZERO` or `ROUND_OFF` (3 decimal places).
-  4. Constructs the final `SalesFact` objects.
+     - **CUSTOM**: Executes user-defined business logic cleanly without mutating core code.
+  4. Applies **Constraints**: Clamps values based on rules like `MIN_ZERO` or `ROUND_OFF` (3 decimal places) using in-place array mutation.
+  5. Constructs the final `SalesFact` objects.
 
 ### Step 2.6: Chunking & Parallel Execution (Worker Threads)
-**Component:** `Executor`
+**Component:** `Executor` & `Worker`
 To handle 100K+ records efficiently, the data is chunked and processed in parallel.
 - **Action:** Splits the results into chunks (e.g., 5,000 records).
 - **Parallelism**: Spawns **Worker Threads** for each chunk. Each thread uses its own database connection to perform the bulk upsert, maximizing CPU and I/O efficiency.
+- **Safe Teardown**: Workers safely tear down their C++ MongoDB native connections and gracefully exit (`process.exit(0)`) to prevent zombie threads and segmentation faults.
 - **Observability**: Each worker logs its progress (start, DB connection, bulk upsert attempts) which is piped back to the main process terminal.
 
 ### Step 2.7: Transactional Bulk Upsert
