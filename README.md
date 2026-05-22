@@ -12,7 +12,7 @@ A highly concurrent, high-throughput Node.js disaggregation engine utilizing Mon
 
 ### 2. Rule Engine (OpenL Tablets)
 - Integrated via `OpenLClient`.
-- Endpoint: `http://14.96.223.218:9007/MFP_Project-info/disaggregation-rules/getStrategyByTargetMeasure`
+- Endpoint: `http://{HOST}:{PORT}/MFP_Project-info/disaggregation-rules/getStrategyByTargetMeasure`
 - Returns:
   - Allocation method (`EQUAL` / `WEIGHTED` / `COPY`)
   - Basis measure (e.g., `planned_sales`)
