@@ -53,7 +53,7 @@ export class OpenLClient {
 
       return {
         spreading_type: spreading_type,
-        basis_measure: result.basisMeasure || (spreading_type === 'WEIGHTED' ? 'planned_sales' : null),
+        basis_measure: result.basisMeasure || targetMeasure,
         constraints: result.constraints || [],
         metadata: {
           rule_id: result.ruleName || 'UNKNOWN',

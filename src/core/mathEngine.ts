@@ -26,7 +26,7 @@ export class MathEngine {
     const totalNodes = records.length;
     if (totalNodes === 0) return [];
 
-    const measure = (input.target_measure as keyof SalesFact) || 'planned_sales';
+    const measure = (input.target_measure as keyof SalesFact) ;
     
     // Calculate overrides
     let totalOverrideValue = 0;

@@ -18,7 +18,7 @@ export class HierarchyResolver {
     
     const whereClause = conditions.length > 0 ? `WHERE ${conditions}` : '';
     
-    const targetMeasure = input.target_measure || 'planned_sales';
+    const targetMeasure = input.target_measure;
     const basisMeasure = strategy.basis_measure;
     
     let selectClause = `
