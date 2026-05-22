@@ -2,18 +2,6 @@
 
 This document explains the inch-by-inch working mechanism of the Disaggregation Engine, tracing the path from the initial user input to the final database output.
 
-## 0. Initial Seeding (Pre-requisite)
-Before the engine can process disaggregation requests, the system must be seeded with normalized dimension and fact data.
-
-**Process:**
-1. **Dimension Seeding**: `item` and `time` entities are generated and stored in their respective collections in `disagg_normalized_db`.
-2. **Fact Normalization**: `fact_data` is created using foreign keys (`item_id`, `time_id`) referencing the dimension tables.
-3. **Data Mapping**: Business attributes like `planned_sales` and `planned_margin` are established, and redundant identifiers (`location_id`, `scenario_id`) are completely removed.
-4. **View Creation**: A MongoDB View `combined_fact_view` is created to join the fact table with item and time metadata for real-time analytics.
-5. **Additional Fact Tables**: Aggregated fact tables (`sales_quarter_fact`, `sales_month_fact`) are initialized using `npm run setup-facts` to support hierarchical disaggregation strategies.
-
----
-
 ## 1. Input (The Request)
 The engine is triggered via a `POST` request to the `/api/disaggregate` endpoint.
 

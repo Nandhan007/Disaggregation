@@ -103,6 +103,14 @@ Distributes a target value across leaf nodes based on a rule-driven strategy.
    npm start
    ```
 
+### 🐳 Running with Docker
+The engine is fully containerized and includes a local MongoDB instance.
+1. Build and start the containers:
+   ```bash
+   docker-compose up --build
+   ```
+2. The API will be available at `http://localhost:3000`.
+
 ## Running Tests
 Unit tests cover the core vectorized math engine and OpenL integration.
 ```bash
