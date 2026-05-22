@@ -1,11 +1,13 @@
 import { MathEngine } from '../core/mathEngine';
 import { DisaggInput, OpenLStrategy, SalesFact } from '../types';
+import { setupStrategies } from '../plugins/register';
 
 describe('MathEngine', () => {
   let mathEngine: MathEngine;
 
   beforeEach(() => {
     mathEngine = new MathEngine();
+    setupStrategies(mathEngine);
   });
 
   it('should split value equally among all nodes when strategy is EQUAL', () => {

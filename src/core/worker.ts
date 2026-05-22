@@ -15,6 +15,7 @@ if (parentPort) {
     
     // Each worker instantiates its own DBClient and connects to MongoDB.
     const dbClient = new DBClient(MONGO_URI, DB_NAME);
+    let finalMessage: any;
     
     try {
       await dbClient.connect();
@@ -25,35 +26,39 @@ if (parentPort) {
         try {
           console.log(`[Worker ${chunkIndex}] Executing bulk upsert (Attempt ${attempt})...`);
           const result = await dbClient.bulkUpsertSalesFact(chunk, dataSource, targetMeasure);
-          parentPort?.postMessage({
+          
+          finalMessage = {
             success: true,
             chunkIndex,
             upsertedCount: result.upsertedCount,
             modifiedCount: result.modifiedCount
-          });
+          };
           success = true;
           break; // Exit retry loop on success
         } catch (error: any) {
           if (attempt === retries) {
-            parentPort?.postMessage({
+            finalMessage = {
               success: false,
               chunkIndex,
               error: `Chunk ${chunkIndex} failed after ${retries} attempts: ${error.message}`
-            });
+            };
           }
           // Exponential backoff
           await new Promise(resolve => setTimeout(resolve, attempt * 1000));
         }
       }
     } catch (err: any) {
-       parentPort?.postMessage({
+       finalMessage = {
           success: false,
           chunkIndex,
           error: `Worker connection error for chunk ${chunkIndex}: ${err.message}`
-       });
+       };
     } finally {
       // Always ensure the client disconnects after completing the chunk
       await dbClient.disconnect();
+      // Send the message ONLY AFTER the database connection is cleanly closed!
+      parentPort?.postMessage(finalMessage);
+      process.exit(0); // Safely exit the worker thread
     }
   });
 }

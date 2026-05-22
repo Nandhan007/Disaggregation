@@ -7,6 +7,7 @@ import { OpenLClient } from './services/openLClient';
 import { MathEngine } from './core/mathEngine';
 import { Executor } from './core/executor';
 import { DisaggInput } from './types';
+import { setupStrategies } from './plugins/register';
 
 dotenv.config();
 
@@ -29,6 +30,9 @@ const hierarchyResolver = new HierarchyResolver();
 const openLClient = new OpenLClient();
 const mathEngine = new MathEngine();
 const executor = new Executor(dbClient);
+
+// Initialize all strategies through the plugin registry
+setupStrategies(mathEngine);
 
 app.post('/api/disaggregate', async (req: Request, res: Response): Promise<void> => {
   console.log('[Server] Incoming request:', JSON.stringify(req.body));

@@ -17,7 +17,7 @@ export interface SalesFact {
 export type AllocationMethod = 'EQUAL' | 'WEIGHTED' | 'COPY' | 'CUSTOM';
 
 export interface OpenLStrategy {
-  spreading_type: 'EQUAL' | 'WEIGHTED' | 'COPY';
+  spreading_type: 'EQUAL' | 'WEIGHTED' | 'COPY' | string;
   basis_measure: string | null;
   constraints: string[];
   metadata?: {

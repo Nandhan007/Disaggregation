@@ -58,7 +58,8 @@ export class Executor {
             console.error(`[Executor] Worker ${msg.chunkIndex} FAILED: ${msg.error}`);
             reject(new Error(msg.error));
           }
-          worker.terminate();
+          // DO NOT call worker.terminate() here. It can cause a segmentation fault 
+          // if the MongoDB C++ driver is still cleaning up. The worker will exit naturally.
         });
 
         worker.on('error', (err) => {

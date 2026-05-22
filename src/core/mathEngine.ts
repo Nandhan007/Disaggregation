@@ -1,6 +1,19 @@
 import { OpenLStrategy, SalesFact, DisaggInput } from '../types';
+import { AllocationStrategy } from '../plugins/strategies';
 
 export class MathEngine {
+  private strategies: Map<string, AllocationStrategy> = new Map();
+
+  constructor() {}
+
+  /**
+   * Registers a custom allocation strategy.
+   * Allows the engine to be extended without modifying core logic.
+   */
+  public registerStrategy(name: string, strategy: AllocationStrategy): void {
+    this.strategies.set(name.toUpperCase(), strategy);
+  }
+
   /**
    * Applies vectorized computation for disaggregation directly on fetched Druid records.
    */
@@ -9,6 +22,7 @@ export class MathEngine {
     strategy: OpenLStrategy,
     records: SalesFact[]
   ): SalesFact[] {
+    console.log(`[MathEngine] Starting compute for ${records.length} records. Strategy: ${strategy.spreading_type}`);
     const totalNodes = records.length;
     if (totalNodes === 0) return [];
 
@@ -21,13 +35,23 @@ export class MathEngine {
     const nodesToProcess: SalesFact[] = [];
 
     for (const record of records) {
-      if (record.isoverride) {
-        totalOverrideValue += (record[measure] as number) || 0;
+      // Druid might return 'false' as a string, which evaluates to true in JS.
+      const overrideVal = record.isoverride as any;
+      const isOverride = 
+        overrideVal === true || 
+        overrideVal === 'true' || 
+        overrideVal === 1 || 
+        overrideVal === '1';
+
+      if (isOverride) {
+        totalOverrideValue += Number(record[measure]) || 0;
         overrideCount++;
       } else {
         nodesToProcess.push(record);
       }
     }
+
+    console.log(`[MathEngine] Overrides found: ${overrideCount}. Nodes to process: ${nodesToProcess.length}`);
 
     const remainingValue = input.targetValue - totalOverrideValue;
     const remainingNodes = totalNodes - overrideCount;
@@ -36,47 +60,26 @@ export class MathEngine {
       return [];
     }
 
-    const results: SalesFact[] = [];
-
-    if (strategy.spreading_type === 'EQUAL') {
-      const valuePerNode = remainingValue / remainingNodes;
-
-      for (const record of nodesToProcess) {
-        (record as any)[measure] = valuePerNode;
-        results.push(record);
-      }
-    } else if (strategy.spreading_type === 'WEIGHTED') {
-      let totalBasis = 0;
-      const basisColumn = (strategy.basis_measure as keyof SalesFact) || measure;
-
-      for (const record of nodesToProcess) {
-        const basisVal = record[basisColumn] as number;
-        // Fix for 0 basis bug: explicitly check undefined/null
-        const basis = (basisVal !== undefined && basisVal !== null) ? basisVal : 1;
-        totalBasis += basis;
-        (record as any)._tempBasis = basis;
-      }
-
-      for (const record of nodesToProcess) {
-        const basis = (record as any)._tempBasis;
-        delete (record as any)._tempBasis;
-
-        const allocatedValue = totalBasis === 0 ? 0 : (basis / totalBasis) * remainingValue;
-        (record as any)[measure] = allocatedValue;
-        results.push(record);
-      }
-    } else if (strategy.spreading_type === 'COPY') {
-      for (const record of nodesToProcess) {
-        (record as any)[measure] = input.targetValue;
-        results.push(record);
-      }
-    } else {
+    const allocationStrategy = this.strategies.get(strategy.spreading_type.toUpperCase());
+    
+    if (!allocationStrategy) {
       throw new Error(`Unsupported strategy: ${strategy.spreading_type}`);
     }
 
+    // Apply the dynamically loaded strategy.
+    // The strategy will mutate nodesToProcess in place.
+    allocationStrategy.apply(
+      input,
+      strategy,
+      nodesToProcess,
+      measure,
+      remainingValue,
+      remainingNodes
+    );
+
     // Apply constraints efficiently via mutation
-    this.applyConstraintsInPlace(results, strategy, measure);
-    return results;
+    this.applyConstraintsInPlace(nodesToProcess, strategy, measure);
+    return nodesToProcess;
   }
 
   /**
