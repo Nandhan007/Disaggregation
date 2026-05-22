@@ -4,7 +4,9 @@ export class OpenLClient {
   private apiUrl: string | undefined;
 
   constructor() {
-    this.apiUrl = process.env.OPENL_URL + '/MFP_Project-info/disaggregation-rules/getStrategyByTargetMeasure';
+    this.apiUrl = process.env.OPENL_URL 
+      ? process.env.OPENL_URL + '/MFP_Project-info/disaggregation-rules/getStrategyByTargetMeasure' 
+      : undefined;
   }
 
   /**

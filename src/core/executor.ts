@@ -13,7 +13,7 @@ export class Executor {
   /**
    * Splits the data into chunks and processes them in parallel using worker threads
    */
-  async executeInChunks(data: SalesFact[], chunkSize: number = 5000): Promise<void> {
+  async executeInChunks(data: SalesFact[], dataSource: string, targetMeasure: string, chunkSize: number = 5000): Promise<void> {
     const chunks: SalesFact[][] = [];
     
     for (let i = 0; i < data.length; i += chunkSize) {
@@ -74,7 +74,7 @@ export class Executor {
         });
 
         // Send the payload to the worker
-        worker.postMessage({ chunk, chunkIndex: index, retries: 3 });
+        worker.postMessage({ chunk, chunkIndex: index, retries: 3, dataSource, targetMeasure });
       });
     });
 

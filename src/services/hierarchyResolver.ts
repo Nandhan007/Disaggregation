@@ -1,66 +1,59 @@
-import { DBClient } from '../db/mongoClient';
-import { LeafNode, DisaggInput } from '../types';
+import axios from 'axios';
+import { DisaggInput, OpenLStrategy, SalesFact } from '../types';
 
 export class HierarchyResolver {
-  private dbClient: DBClient;
-
-  constructor(dbClient: DBClient) {
-    this.dbClient = dbClient;
-  }
-
   /**
-   * Resolves high-level input to leaf nodes by querying existing records in the fact table.
-   * This ensures we only process data that actually exists.
+   * Resolves high-level input to fact records by querying Druid directly for specific measures.
    */
-  async resolveToLeaves(input: DisaggInput): Promise<LeafNode[]> {
-    const { time_id, item_id } = input.dimensions;
-    console.log(`[Hierarchy] Resolving leaves for item_id: ${item_id}, time_id: ${time_id}`);
+  async fetchTargetRecords(input: DisaggInput, strategy: OpenLStrategy): Promise<SalesFact[]> {
+    const druidUrl = process.env.DRUID_URL || 'http://localhost:8888/druid/v2/sql';
+    const dataSource = process.env.DRUID_DATASOURCE || 'fact_depart_quarter'; // Using from env for Druid fetch
+
+    console.log(`[Hierarchy] Resolving records via Druid for dimensions:`, JSON.stringify(input.dimensions));
+
+    // Construct WHERE clause
+    const conditions = Object.entries(input.dimensions)
+      .map(([key, value]) => `"${key}" = '${value}'`)
+      .join(' AND ');
     
-    // 1. Resolve Time Leaves (e.g., Year -> Months/Days)
-    const timeQuery: any = {};
-    if (!isNaN(Number(time_id))) {
-      timeQuery.Year = Number(time_id);
-    } else if (time_id.startsWith('Q')) {
-      timeQuery.Quarter = time_id;
-    } else {
-      timeQuery.Month = time_id;
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions}` : '';
+    
+    const targetMeasure = input.target_measure || 'planned_sales';
+    const basisMeasure = strategy.basis_measure;
+    
+    let selectClause = `
+      "_id",
+      LATEST_BY("isoverride", __time) AS "isoverride",
+      LATEST_BY("version", __time) AS "version",
+      LATEST_BY("${targetMeasure}", __time) AS "${targetMeasure}"
+    `;
+    
+    if (basisMeasure && basisMeasure !== targetMeasure) {
+       selectClause += `, LATEST_BY("${basisMeasure}", __time) AS "${basisMeasure}"`;
     }
 
-    const times = await this.dbClient.getTimeCollection().find(timeQuery).toArray();
-    const timeIds = times.map(t => t._id);
+    const query = `
+      SELECT ${selectClause}
+      FROM "${dataSource}"
+      ${whereClause}
+      GROUP BY "_id"
+      HAVING LATEST_BY("operation_type",__time) != 'delete'
+    `;
 
-    // 2. Resolve Item Leaves (e.g., BU/Dept -> Items)
-    // Check if item_id matches an item directly, or a BusinessUnit/Department
-    const itemQuery: any = {
-      $or: [
-        { _id: item_id },
-        { BusinessUnit: item_id },
-        { Department: item_id }
-      ]
-    };
+    console.log(`[Hierarchy] Executing Druid SQL:\n${query}`);
 
-    const items = await this.dbClient.getItemCollection().find(itemQuery).toArray();
-    const itemIds = items.map(i => i._id);
+    try {
+      const response = await axios.post(druidUrl, { query }, {
+        headers: { 'Content-Type': 'application/json' }
+      });
 
-    console.log(`[Hierarchy] Filter resolved to ${timeIds.length} time periods and ${itemIds.length} items.`);
+      const records = response.data as SalesFact[];
 
-    if (timeIds.length === 0 || itemIds.length === 0) {
-      return [];
+      console.log(`[Hierarchy] Found ${records.length} matching fact records from Druid.`);
+      return records;
+    } catch (error: any) {
+      console.error('[Hierarchy] Error querying Druid:', error.message);
+      throw new Error(`Druid query failed: ${error.message}`);
     }
-
-    // 3. Find existing records in the fact table matching these dimensions
-    // This is the "Existing record count" approach
-    const existingFactRecords = await this.dbClient.getFactCollection().find({
-      item_id: { $in: itemIds },
-      time_id: { $in: timeIds }
-    }).project({ item_id: 1, time_id: 1 }).toArray();
-
-    const leaves: LeafNode[] = existingFactRecords.map(rec => ({
-      item_id: rec.item_id.toString(),
-      time_id: rec.time_id.toString()
-    }));
-
-    console.log(`[Hierarchy] Found ${leaves.length} existing leaf nodes in fact table.`);
-    return leaves;
   }
 }

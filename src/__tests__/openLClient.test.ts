@@ -33,6 +33,7 @@ describe('OpenLClient', () => {
 
     const input: DisaggInput = {
       targetValue: 100,
+      data_source: 'test_source',
       target_measure: 'planned_sales',
       dimensions: { item_id: 'BU1', time_id: '2022' }
     };
@@ -53,6 +54,7 @@ describe('OpenLClient', () => {
 
     const input: DisaggInput = {
       targetValue: 100,
+      data_source: 'test_source',
       target_measure: 'planned_sales',
       dimensions: { item_id: 'BU1', time_id: '2022' }
     };
@@ -63,6 +65,7 @@ describe('OpenLClient', () => {
   it('should throw error if target_measure is missing', async () => {
     const input: any = {
       targetValue: 100,
+      data_source: 'test_source',
       dimensions: { item_id: 'BU1', time_id: '2022' }
     };
 
@@ -75,6 +78,7 @@ describe('OpenLClient', () => {
     
     const input: DisaggInput = {
       targetValue: 100,
+      data_source: 'test_source',
       target_measure: 'planned_sales',
       dimensions: { item_id: 'BU1', time_id: '2022' }
     };

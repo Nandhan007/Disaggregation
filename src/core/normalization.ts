@@ -9,7 +9,7 @@ export interface SourceFact {
   net_sales?: number;
   gross_profit?: number;
   scenario_id?: string;
-  is_override?: boolean;
+  isoverride?: boolean;
   location_id?: string;
 }
 
@@ -21,7 +21,7 @@ export interface NormalizedFact {
   gross_sales: number;
   net_sales: number;
   gross_profit: number;
-  is_override: boolean;
+  isoverride: boolean;
   updated_at: Date;
   version: number;
 }
@@ -39,7 +39,7 @@ export function normalizeFactRecord(
     gross_sales: fact.gross_sales || 0,
     net_sales: fact.net_sales || 0,
     gross_profit: fact.gross_profit || 0,
-    is_override: fact.is_override || false,
+    isoverride: fact.isoverride || false,
     updated_at: new Date(),
     version: 0
   };

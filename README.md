@@ -20,6 +20,22 @@ A highly concurrent, high-throughput Node.js disaggregation engine utilizing Mon
 
 ---
 
+## Data Model
+
+### Hierarchical Fact Tables
+The system supports multiple levels of granularity across various fact tables:
+
+1. **fact_data**: Granular leaf-level data (Item Range + Day).
+2. **sales_quarter_fact**: Aggregated quarterly data by Department.
+3. **sales_month_fact**: Aggregated monthly data by Item Range.
+
+Each fact table includes standard metadata:
+- `version`: For optimistic concurrency control.
+- `updated_at`: Last modification timestamp.
+- `is_override`: Flag to lock records from disaggregation logic.
+
+---
+
 ## API Usage
 
 ### 🚀 API Reference
@@ -32,15 +48,15 @@ Distributes a target value across leaf nodes based on a rule-driven strategy.
 {
   "targetValue": 2500000,
   "target_measure": "planned_sales",
+  "data_source": "fact_data",
   "dimensions": {
-    "item_id": "WOMENSWEAR",
-    "time_id": "2022"
+    "BusinessUnit": "WOMENSWEAR",
+    "Year": "2022"
   }
 }
 ```
 
-- `item_id`: Can be a specific item ID, Business Unit, or Department name.
-- `time_id`: Can be a Year (e.g., 2022), Quarter (e.g., Q1), or Month name.
+- `dimensions`: A dynamic object representing filters (e.g., `BusinessUnit`, `Year`, `Department`). These are passed directly to Druid.
 - `target_measure`: **[MANDATORY]** The field to be updated (e.g., `planned_sales`).
 
 ---
@@ -48,8 +64,8 @@ Distributes a target value across leaf nodes based on a rule-driven strategy.
 ### ⚙️ Core Components
 
 1. **OpenLClient**: Communicates with the rule engine to fetch allocation strategies based on the `target_measure`. **Fails explicitly if `target_measure` is missing or `OPENL_URL` is not set.**
-2. **HierarchyResolver**: Resolves high-level dimensions into leaf nodes.
-3. **MathEngine**: Performs vectorized, in-memory computations with support for overrides and constraints (`MIN_ZERO`, `ROUND_OFF`).
+2. **HierarchyResolver**: Queries Apache Druid via a dynamic SQL `WHERE` clause to resolve high-level dimensions into leaf nodes, returning a list of `_id` strings.
+3. **MathEngine**: Performs vectorized, in-memory computations. Maps strictly via `_id` with support for overrides and constraints (`MIN_ZERO`, `ROUND_OFF`).
 4. **Executor**: Handles parallel processing and bulk DB writes using Node.js Worker Threads.
 
 ### 🔒 Versioning & Consistency

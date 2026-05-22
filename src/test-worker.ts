@@ -19,7 +19,7 @@ async function run() {
       time_id: '2024-01-01',
       scenario_id: 'WORKER_TEST',
       planned_sales: 999,
-      is_override: false,
+      isoverride: false,
       updated_at: new Date(),
       version: 1
     }

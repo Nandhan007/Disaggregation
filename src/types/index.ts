@@ -1,13 +1,14 @@
 export interface SalesFact {
-  item_id: string;
-  time_id: string;
+  _id: string;
+  item_id?: string;
+  time_id?: string;
   planned_sales: number;
   planned_margin?: number;
   gross_sales?: number;
   net_sales?: number;
   gross_profit?: number;
   unit_price?: number;
-  is_override: boolean;
+  isoverride: boolean;
   updated_at: Date;
   version: number; // for optimistic locking
   [key: string]: any; // Allow for dynamic measures
@@ -28,15 +29,12 @@ export interface OpenLStrategy {
 
 export interface DisaggInput {
   targetValue: number;
-  dimensions: {
-    item_id: string; // High-level item or hierarchy node
-    time_id: string; // High-level time, e.g. Year or Quarter
-  };
+  data_source: string;
+  dimensions: Record<string, string>;
   target_measure?: string; // e.g. 'planned_sales' or 'planned_margin'
   notes?: string;
 }
 
 export interface LeafNode {
-  item_id: string;
-  time_id: string;
+  _id: string;
 }

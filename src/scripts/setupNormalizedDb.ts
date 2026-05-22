@@ -146,7 +146,7 @@ async function runMigration() {
           $project: {
             _id: 1,
             planned_sales: 1,
-            is_override: 1,
+            isoverride: 1,
             updated_at: 1,
             planned_margin: 1,
             gross_sales: 1,

@@ -9,9 +9,9 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017';
 const DB_NAME = process.env.DB_NAME || 'disagg_normalized_db';
 
 if (parentPort) {
-  parentPort.on('message', async (message: { chunk: SalesFact[], chunkIndex: number, retries?: number }) => {
-    const { chunk, chunkIndex, retries = 3 } = message;
-    console.log(`[Worker ${chunkIndex}] Starting processing for ${chunk.length} records...`);
+  parentPort.on('message', async (message: { chunk: SalesFact[], chunkIndex: number, retries?: number, dataSource: string, targetMeasure: string }) => {
+    const { chunk, chunkIndex, retries = 3, dataSource, targetMeasure } = message;
+    console.log(`[Worker ${chunkIndex}] Starting processing for ${chunk.length} records in ${dataSource}...`);
     
     // Each worker instantiates its own DBClient and connects to MongoDB.
     const dbClient = new DBClient(MONGO_URI, DB_NAME);
@@ -24,7 +24,7 @@ if (parentPort) {
       for (let attempt = 1; attempt <= retries; attempt++) {
         try {
           console.log(`[Worker ${chunkIndex}] Executing bulk upsert (Attempt ${attempt})...`);
-          const result = await dbClient.bulkUpsertSalesFact(chunk);
+          const result = await dbClient.bulkUpsertSalesFact(chunk, dataSource, targetMeasure);
           parentPort?.postMessage({
             success: true,
             chunkIndex,

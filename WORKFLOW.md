@@ -10,6 +10,7 @@ Before the engine can process disaggregation requests, the system must be seeded
 2. **Fact Normalization**: `fact_data` is created using foreign keys (`item_id`, `time_id`) referencing the dimension tables.
 3. **Data Mapping**: Business attributes like `planned_sales` and `planned_margin` are established, and redundant identifiers (`location_id`, `scenario_id`) are completely removed.
 4. **View Creation**: A MongoDB View `combined_fact_view` is created to join the fact table with item and time metadata for real-time analytics.
+5. **Additional Fact Tables**: Aggregated fact tables (`sales_quarter_fact`, `sales_month_fact`) are initialized using `npm run setup-facts` to support hierarchical disaggregation strategies.
 
 ---
 
@@ -21,9 +22,10 @@ The engine is triggered via a `POST` request to the `/api/disaggregate` endpoint
 {
   "targetValue": 5000000,
   "target_measure": "planned_sales",
+  "data_source": "fact_data",
   "dimensions": {
-    "item_id": "BU1",
-    "time_id": "2024"
+    "BusinessUnit": "BU1",
+    "Year": "2024"
   }
 }
 ```
@@ -35,7 +37,7 @@ The engine is triggered via a `POST` request to the `/api/disaggregate` endpoint
 Once the request is received by the Express API (`server.ts`), it flows through a strict, multi-step pipeline:
 
 ### Step 2.1: Input Validation
-The server verifies that the critical payload parameters (`targetValue`, `target_measure`, `dimensions.time_id`, `dimensions.item_id`) are present. If any are missing, it immediately rejects the request with a **400 Bad Request**.
+The server verifies that the critical payload parameters (`targetValue`, `target_measure`, `dimensions`) are present. If any are missing, it immediately rejects the request with a **400 Bad Request**.
 
 ### Step 2.2: Fetch Rule Strategy
 The engine calls the **OpenL Tablets** API to determine the allocation logic.
@@ -52,16 +54,16 @@ The engine calls the **OpenL Tablets** API to determine the allocation logic.
   - `Allocation_method`: `EQUAL` -> Engine uses `EQUAL` split logic.
 - **Constraints Handling:** The engine receives an array of strings (e.g., `["MIN_ZERO", "ROUND_OFF"]`) and applies them during computation.
 
-### Step 2.3: Hierarchy Resolution
+### Step 2.3: Hierarchy Resolution (via Apache Druid)
 **Component:** `HierarchyResolver`
-The engine determines which granular leaf nodes already exist in the database for the given high-level input (e.g., "Year 2022" -> "Daily granularity for specific items").
-- **Action:** Resolves dimension filters (BU, Dept, Time) and queries the `fact_data` collection to find existing records.
-- **Result:** An array of `LeafNode` objects containing `(item_id, time_id)` for records that actually exist in the DB.
+The engine determines which granular leaf nodes already exist by directly querying the fast OLAP Apache Druid database.
+- **Action:** Generates a dynamic SQL `WHERE` clause using the payload's `dimensions` and submits a `POST` request to the `DRUID_URL`.
+- **Result:** Extracts and returns a list of `_id` strings matching the dimension constraints.
 
 ### Step 2.4: Fetch Existing State & Overrides
 **Component:** `DBClient`
-The engine checks the database for the current state of the resolved leaf nodes.
-- **Action:** Queries the `fact_data` collection using `item_id` and `time_id`.
+The engine checks MongoDB for the current state of the resolved leaf nodes.
+- **Action:** Queries the `fact_data` collection using `{ _id: { $in: objectIds } }`.
 - **Purpose:** 
   1. To identify nodes with `is_override: true` (locked values).
   2. To fetch the current `version` for **Optimistic Locking**.
